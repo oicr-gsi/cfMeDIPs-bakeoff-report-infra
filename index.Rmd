@@ -683,7 +683,19 @@ observe({
   )
 })
 
-observe({
+# inputPanel(
+#   # load run names based on project selected
+#   checkboxInput("loadTheRest", label= "Load correlations data", 
+#                   value = FALSE, width = NULL)
+# )
+
+
+
+```
+\
+```{r, echo = F}
+reactive({
+  observe({
   ant <- getAnt()
   updateSelectInput(
     session,
@@ -701,14 +713,14 @@ observe({
   )
 })
 
+})
 
 ```
-\
-```{r, echo = F}
+
+```{r, echo=F}
 library(RColorBrewer)
 library(ComplexHeatmap)
 library(circlize)
-
 computeCorr <- reactive({
   ant <- getAnt()
   sample.names <- colnames(count)
@@ -731,7 +743,7 @@ computeCorr <- reactive({
 })
 # #
 # # heatmap
-renderPlot({
+  renderPlot({
   annotation_df <- getAnt()
   protocol1 <- input$`protocol1`
   protocol2 <- input$`protocol2`
@@ -777,8 +789,9 @@ renderPlot({
                   }
                 },
           width = unit(input$`resize`, "cm"), height = unit(input$`resize`, "cm"))
-})
+  })
 ```
+
 
 #### Pair-wise checks
 
@@ -804,10 +817,6 @@ observe({
   )
 })
 
-# input bins 300bp, shore, shelf, island, inter, promoter
-
-# x protocol
-# y protocol
 getSampleCounts <- reactive({
   # from the counts per roi
   ant <- getAnt()
@@ -893,7 +902,7 @@ scatterPlotDF <- reactive({
 
 ```{r, echo=F}
 #
-renderPlot({
+  renderPlot({
   zcounts <- scatterPlotDF()
   p <- ggplot(zcounts) +
     geom_point(aes(x = X.value, y = Y.value), alpha = 0.5) +
@@ -913,57 +922,8 @@ renderPlot({
   }
   p
 }, width = 400, height = 300)
+
 ```
-
-
-
-#### Bins specific for a protcol of interest
-\
-## this work in pending
-\
-For this analysis we have filtered out all bins with 0 coverage across all libraries.
-\
-Eliminate highly correlated features across all 25 samples 
-\
-group1 to identify highly correlated features (> 0.8)
-\
-group2 to identify uncorrelated features (< 0.5)
-\
-Check for distinct features/bins in group1 = intersect(2 and 3) 
-\ 
-histogram for their counts
-```{r, echo=F, warning=F}
-# inputPanel(
-#   selectInput("protocol3", label = "Experimental Protocol",
-#               choices = c("protocol3"), selected = "None", width = 2000),
-#   sliderInput("corr1", label = "similarity",
-#               min = 0, max = 1, value = 0.9, step = 0.01),
-#   sliderInput("corr2", label = "dissimilarity",
-#               min = 0, max = 1, value = 0.5, step = 0.01),
-#   checkboxInput("scaleXn", label= "scale X axis",
-#                   value = FALSE, width = NULL)
-# )
-# 
-# observe({
-#   ant <- getAnt()
-#   updateSelectInput(
-#     session,
-#     "protocol3",
-#     choices = unique(ant$group)
-#   )
-# })
-
-
-# reactive function to get the ycounts (not in selected protocol)
-
-# with with PCAs
-
-
-
-# common.x.feats.thres.common.rest <- feats.x[feats.x %in% feats.y] # bins common with the rest
-# feats.x.uncommon <- feats.x[!feats.x %in% feats.y] # bins not in x but in others
-```
-
 
 To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
 
