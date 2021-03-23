@@ -20,7 +20,7 @@ Requirements
 Usage
 -------
       git clone https://github.com/oicr-gsi/cfMeDIPs-bakeoff-report-infra.git
-      cd cfMeDIPs-bakeoff-report-infra
+      cd cfMeDIPs-bakeoff-report-infra/
       Rscript run.R
       
   The app runs on this URL http://127.0.0.1:5052/
