@@ -22,8 +22,9 @@ Three experimental conditions run on 5 healthy controls samples.
 \
 \
 <img src="fig/2021-02-25_12-12-57.jpeg"/>
-\
-\
+
+
+
 
 ## DATA
 
@@ -635,7 +636,7 @@ plt
 
 
 \
-```{r, echo = F, warning=F}
+```{r, echo = F, warning=F, message=F}
 
 source("R/subsetCountMatrix.R")
 library(edgeR)
@@ -717,7 +718,7 @@ observe({
 
 ```
 
-```{r, echo=F}
+```{r, echo = F, warning=F, message=F}
 library(RColorBrewer)
 library(ComplexHeatmap)
 library(circlize)
