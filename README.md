@@ -16,6 +16,7 @@ Requirements
     - circlize
     - flexdashboard
     - stringr
+    - edgeR
 
 Usage
 -------
