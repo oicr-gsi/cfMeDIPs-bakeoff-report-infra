@@ -24,8 +24,6 @@ Three experimental conditions run on 5 healthy controls samples.
 <img src="fig/2021-02-25_12-12-57.jpeg"/>
 
 
-
-
 ## DATA
 
 #### sample names and protocol definitions
@@ -68,6 +66,7 @@ Falsifiable hypothesis to test: “The cfMeDIP protocols enriched methylated DNA
 ```{r, echo = FALSE}
 # insert table of annotations for samples
 dashi.metrics <- read.csv("data/dashi_metrics/medips_dashi.txt", sep = "\t", as.is = T)
+dashi.metrics <- dashi.metrics[dashi.metrics$RUN.INFO != "EXTERNAL_PUGH_LAB",]
 # head(dashi.metrics)
 # data for display to be chosen on fly
 # Alignment metrics
