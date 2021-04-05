@@ -535,44 +535,165 @@ renderPlot({
   genome_wide_reads_data <- redesignGenomeWideReadsData()
   genome_wide_reads_data.total <- genome_wide_reads_data[genome_wide_reads_data$genomic_site == "total_dedup",]
   genome_wide_reads_data <- genome_wide_reads_data[genome_wide_reads_data$genomic_site != "total_dedup",]
-  genome_wide_reads_data <- merge(genome_wide_reads_data, genome_wide_reads_data.total, by = c("sampleID", "Effective.sample.ID",
-                                                                                               "IDENT", "notes"))
+  genome_wide_reads_data <- merge(genome_wide_reads_data, genome_wide_reads_data.total, by = c("sampleID", "Effective.sample.ID", "IDENT", "notes"))
   genome_wide_reads_data$pctMapping <- (genome_wide_reads_data$total_reads.x/genome_wide_reads_data$total_reads.y)*100
   
   # reorder by  CpG_inter, CpG_island, CpG_shore, CpG_shelves
   genome_wide_reads_data$genomic_site.x <- factor(genome_wide_reads_data$genomic_site.x,
                                            levels = c("CpG_inter", "CpG_island", "CpG_shore", "CpG_shelf"))
+  genome_wide_reads_data$group.x2 <-  paste(genome_wide_reads_data$IDENT, genome_wide_reads_data$notes, sep = "\n")
   
   plt <- ggplot(genome_wide_reads_data) +
-    geom_boxplot(aes(x = group.x, y = pctMapping)) +
+    geom_bar(aes(x = Effective.sample.ID, y = pctMapping, fill = group.x2), stat="identity", position = "dodge") +
     theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
-    facet_grid(.~genomic_site.x, space = "free", scales = "free") + ylim(0,100) + ylab("% reads mapping") +
+    facet_grid(genomic_site.x ~ group.x, space = "free", scales = "free") + ylim(0,100) + ylab("% reads mapping") +
     xlab("Genomic Sites")
   if (input$`scaleYm`){
     plt <- plt + scale_y_log10()
   }
   plt
-}, width = 800, height = 400)
+}, width = 800, height = 600)
 ```
 
-\
-Ratio of meth/unmeth
-```{r, echo = F}
-
-```
 
 #### Hoffman spike-in control metrics (`spiky` package)
 
-Tested the examples provided in `spiky`. 
+Worked with some functional components of `spiky`. 
 \
-Could not get to work a few functions. [Issue created on the GitHub repo](https://github.com/trichelab/spiky/issues/21)
+<p style="font-family: courier, courier; font-size:10pt; font-style:bold">
+devtools::install("/Users/prath/Projects/GSI/medips_eval/tools/spiky/", quick = T)
+\
+library(spiky)
+\
+sbs <- list.files("/Volumes/gsiprojects/gsi/cfMeDIPs_validation/data/TGL61/", pattern = ".spikein.sorted.bam", full.names = T)
+\
+sbs <- sbs[!grepl("bai",sbs)]
+\
+meth.spec <- scan_methylation_specificity(sbs, spike=spike)
+\
+spike.count <- scan_spike_counts(sbs, spike=spike)
+\
+annotated.spike.counts <- add_frag_info(spike.count, spike=spike)
+\
+\
+</p> 
+```{r, echo=F, warning=F}
+# read spiky data 
+spiky.data <- read.csv("data/spiky/annotated.spike.in.counts.txt", sep = "\t", as.is = T)
+spiky.data <-merge(annotations[annotations$IDENT != "UHN",], spiky.data, by.x ="sampleName", by.y = "id")
+# head(spiky.data.in)
+getDefinitiveSpikyData <- reactive({
+  # annotate spiky pr subset spiky by groups
+  spiky.data$group <- paste(spiky.data$IDENT, spiky.data$notes, sep = "\n")
 
+  if (!input$`ident`){
+    spiky.data$group <- spiky.data$notes
+  }
+  if (!input$`notes`){
+    spiky.data$group <- spiky.data$IDENT
+  }
+  spiky.data$IDENT <- factor(spiky.data$IDENT,
+                                   levels=c("TGL", "GRP"))
+  spiky.data$notes <- factor(spiky.data$notes,
+                                levels=c("UNmethylated", "METHylated"))
+  spiky.data$Effective.sample.ID <- factor(spiky.data$Effective.sample.ID,
+                                levels=c("HCC-002-Control-2-cfDNA",
+                                         "HCC-004-Control-2-cfDNA",
+                                         "HCC-005-Control-2-cfDNA",
+                                         "HCC-017-Control-2-cfDNA",
+                                         "HCC-019-Control-2-cfDNA"))
+  spiky.data <- spiky.data[with(spiky.data,
+                                      order(Effective.sample.ID,IDENT,notes)),]
 
-##### this work in pending
+  return (spiky.data)
+})
+
+```
+
 
 Enrichment of methylated fragments in low (35%), medium (50%), and high (65%) CpG content regions
 \
+```{r, echo = F, warning=F}
+# plot this
+renderPlot({
+  plot.spikes <-  getDefinitiveSpikyData()
+  plot.spikes <- plot.spikes[plot.spikes$methylated == 1,] # for methylated fragments
+  plot.spikes$Effective.sample.ID <- gsub("-","\n",plot.spikes$Effective.sample.ID)
+  plot.spikes$fraglen <- paste0(plot.spikes$fraglen, " b")
+  plot.spikes$GC <- paste0(plot.spikes$GC, "% GC")
+  plt <- ggplot() +
+    geom_point(data = plot.spikes,
+                  aes(x = CpG, y = read_count, color = fraglen), shape = 2, size = 4) +
+      theme_bw() +
+      facet_grid(Effective.sample.ID ~ GC + group, space = "free") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ylab('read counts from spiky for methylated fragments') 
+  plt
+  }, width = 900, height = 600)
+```
+\
 Enrichment of unmethylated fragments in low (35%), medium (50%), and high (65%) CpG content regions
+\
+```{r, echo=F, warning=F}
+# plot this
+renderPlot({
+  plot.spikes <-  getDefinitiveSpikyData()
+  plot.spikes <- plot.spikes[plot.spikes$methylated == 0,] # for methylated fragments
+  plot.spikes$Effective.sample.ID <- gsub("-","\n",plot.spikes$Effective.sample.ID)
+  plot.spikes$GC <- paste0(plot.spikes$GC, "% GC")
+  plot.spikes$fraglen <- paste0(plot.spikes$fraglen, " b")
+  plt <- ggplot() +
+    geom_point(data = plot.spikes,
+                  aes(x = CpG, y = read_count, color = fraglen), shape = 1, size = 4) +
+      theme_bw() +
+      facet_grid(Effective.sample.ID ~ GC + group, space = "free") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ylab('read counts from spiky for unmethylated fragments') 
+  plt
+  }, width = 900, height = 600)
+```
+\
+Methylation specificity for each sample
+\
+```{r, echo = F, warning=F}
+meth.data <- read.csv("data/spiky/meth.spec.txt", sep = "\t", as.is = T)
+meth.data$sampleName <- stringr::str_split_fixed(row.names(meth.data), "[.]", 2)[,1]
+meth.data <-merge(annotations, meth.data, by ="sampleName")
+# head(meth.data)
+renderPlot({
+  meth.data$group <- paste(meth.data$IDENT, meth.data$notes, sep = "\n")
+  meth.data$group2 <- paste(meth.data$IDENT, meth.data$notes, sep = "\n")
+
+  if (!input$`ident`){
+    meth.data$group <- meth.data$notes
+  }
+  if (!input$`notes`){
+    meth.data$group <- meth.data$IDENT
+  }
+  meth.data$IDENT <- factor(meth.data$IDENT,
+                                   levels=c("TGL", "GRP"))
+  meth.data$notes <- factor(meth.data$notes,
+                                levels=c("UNmethylated", "METHylated"))
+  meth.data$Effective.sample.ID <- factor(meth.data$Effective.sample.ID,
+                                levels=c("HCC-002-Control-2-cfDNA",
+                                         "HCC-004-Control-2-cfDNA",
+                                         "HCC-005-Control-2-cfDNA",
+                                         "HCC-017-Control-2-cfDNA",
+                                         "HCC-019-Control-2-cfDNA"))
+  meth.data <- meth.data[with(meth.data,
+                                      order(Effective.sample.ID,IDENT,notes)),]
+  # meth.data$Effective.sample.ID <- gsub("-","\n",meth.data$Effective.sample.ID)
+  plt <- ggplot() +
+    geom_bar(data = meth.data,
+                  aes(x = Effective.sample.ID, y = mean, fill = group2),
+             stat = "identity", position = "dodge") +
+      theme_bw() +
+      facet_grid(.~ group, space = "free") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ylab('Mean methylation specifificty from Spiky') + ylim(0,1)
+  plt
+  }, width = 800, height = 400)
+```
 
 
 ## AIM 3 - Assess frequency and patterns of non-specific binding
