@@ -12,6 +12,7 @@ runtime: shiny
 knitr::opts_chunk$set(echo = TRUE)
 library(shiny)
 library(ggplot2)
+library(gtools)
 ```
 
 ## GOAL
@@ -85,9 +86,9 @@ inputPanel(
   checkboxInput("ident", label= "group by IDENT", 
                   value = TRUE, width = NULL),
   checkboxInput("notes", label= "group by notes", 
-                  value = TRUE, width = NULL),
-  checkboxInput("addJitter", label= "add jitter to boxplots", 
-                  value = FALSE, width = NULL)
+                  value = TRUE, width = NULL)
+  # checkboxInput("addJitter", label= "add jitter to boxplots", 
+  #                 value = FALSE, width = NULL)
 )
 
 observe({
@@ -109,7 +110,7 @@ metrics_data <- reactive({
 ```
 
 
-#### Alignment and MEDIPS metrics (ordered plots) 
+#### Alignment and MEDIPS metrics
 
 ```{r, echo = F}
 # ordered plots
@@ -131,29 +132,27 @@ renderPlot({
 ```
 
 
-#### Alignment and MEDIPS metrics (boxplots and statistical analysis) 
-
 ```{r, echo = F}
-# boxplots
-renderPlot({
-  plot.metr <- metrics_data()
-  metric <- input$`metrics`
-  plot.metr$group <- paste(plot.metr$IDENT, plot.metr$notes, sep = "\n")
-  if (!input$`ident`){
-    plot.metr$group <- plot.metr$notes
-  }
-  if (!input$`notes`){
-    plot.metr$group <- plot.metr$IDENT
-  }
-  plot4 <- ggplot(plot.metr) + 
-    geom_boxplot(aes(x = group, y = metric.eval, fill = group)) + 
-    ylab(metric) +  xlab("")+
-    theme_bw() + theme(axis.title.y = element_text(size = 8))
-  if (input$`addJitter`){
-    plot4 <- plot4 + geom_jitter(aes(x = group, y = metric.eval))
-  }
-  plot4
-}, width = 800, height = 400)
+# boxplots NOT needed
+# renderPlot({
+#   plot.metr <- metrics_data()
+#   metric <- input$`metrics`
+#   plot.metr$group <- paste(plot.metr$IDENT, plot.metr$notes, sep = "\n")
+#   if (!input$`ident`){
+#     plot.metr$group <- plot.metr$notes
+#   }
+#   if (!input$`notes`){
+#     plot.metr$group <- plot.metr$IDENT
+#   }
+#   plot4 <- ggplot(plot.metr) + 
+#     geom_boxplot(aes(x = group, y = metric.eval, fill = group)) + 
+#     ylab(metric) +  xlab("")+
+#     theme_bw() + theme(axis.title.y = element_text(size = 8))
+#   if (input$`addJitter`){
+#     plot4 <- plot4 + geom_jitter(aes(x = group, y = metric.eval))
+#   }
+#   plot4
+# }, width = 800, height = 400)
 
 
 
@@ -326,6 +325,8 @@ getDefinitiveSpikeInData <- reactive({
 renderPlot({
   plot.spikes <- getDefinitiveSpikeInData()
   plot.spikes$Effective.sample.ID <- stringr::str_replace_all(plot.spikes$Effective.sample.ID, "-", "\n")
+  # sort C's lexicographically
+  plot.spikes$Spike.In.C <- factor(plot.spikes$Spike.In.C, levels=mixedsort(unique(plot.spikes$Spike.In.C)))
 
   if(input$`compareSampleWide`){
   plt <- ggplot() +
@@ -538,6 +539,10 @@ renderPlot({
                                                                                                "IDENT", "notes"))
   genome_wide_reads_data$pctMapping <- (genome_wide_reads_data$total_reads.x/genome_wide_reads_data$total_reads.y)*100
   
+  # reorder by  CpG_inter, CpG_island, CpG_shore, CpG_shelves
+  genome_wide_reads_data$genomic_site.x <- factor(genome_wide_reads_data$genomic_site.x,
+                                           levels = c("CpG_inter", "CpG_island", "CpG_shore", "CpG_shelf"))
+  
   plt <- ggplot(genome_wide_reads_data) +
     geom_boxplot(aes(x = group.x, y = pctMapping)) +
     theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
@@ -550,6 +555,11 @@ renderPlot({
 }, width = 800, height = 400)
 ```
 
+\
+Ratio of meth/unmeth
+```{r, echo = F}
+
+```
 
 #### Hoffman spike-in control metrics (`spiky` package)
 
@@ -805,7 +815,9 @@ inputPanel(
                   value = FALSE, width = NULL),
   checkboxInput("scaleX3", label= "scale X axis",
                   value = FALSE, width = NULL),
-  checkboxInput("normalizeCount", label= "Normalize counts",
+  checkboxInput("normalizeCount", label= "Normalize by read counts",
+                  value = FALSE, width = NULL),
+  checkboxInput("normalizeGenome", label= "Normalize by genomic size",
                   value = FALSE, width = NULL)
 )
 
@@ -816,7 +828,8 @@ observe({
     choices = gsub("-Control-2-cfDNA", "",unique(annotations$Effective.sample.ID))
   )
 })
-
+gen.size <- data.frame(region = c("inter", "island","shelf", "shore", "promoter"), 
+                         size = c(3028643306,24200434,93905443,110440712,110440712))
 getSampleCounts <- reactive({
   # from the counts per roi
   ant <- getAnt()
@@ -830,19 +843,58 @@ getSampleCounts <- reactive({
   if (input$`normalizeCount`){
     count[,1:25] <- cpm(count[,1:25])
   }
+  
+  # for scaling by genomic size
+  gen.size <- data.frame(region = c("inter", "island","shelf", "shore", "promoter"), 
+                         size = c(3028643306,24200434,93905443,110440712,110440712))
+  # row.names(gen.size) <- gen.size$region
+  if (input$`normalizeGenome` & input$`roi` != "allsites"){
+    count[,1:25] <- cpm(count[,1:25],lib.size=gen.size[gen.size$region == input$`roi`,]$size)
+  }
+  
   count_site <- count[,c(keepCols, "regions")]
   row.names(count_site) <- count_site$regions
   
   if (input$`roi` != "allsites"){
     count_site <- count_site[grepl(input$`roi`, count_site$regions),]
+  } else {
+    if (input$`normalizeGenome`){
+       count[,1:25] <- cpm(count[,1:25],lib.size=sum(gen.size$size))
+    }
   }
   count_site <- count_site[,keepCols]
   return(count_site)
 })
+# TEST
+# renderTable({
+#     # for scaling by genomic size
+#   gen.size <- data.frame(region = c("inter", "island","shelf", "shore", "promoter"), 
+#                          size = c(3028643306,24200434,93905443,110440712,110440712))
+#   row.names(gen.size) <- gen.size$region
+#   # gen.size
+#   count_site <- getSampleCounts()
+#   # normalize by genome size
+#   if (input$`normalizeGenome`){
+#     if (input$`roi` == "allsites"){
+#       sum(gen.size$size)
+#      
+#           # region <- row.names(gen.size)[grep(input$`roi`,row.names(gen.size))]
+#           # count_site[,1:25] <- count_site[,1:25]/as.numeric(gen.size[input$`roi`,]$size)
+#     } else {
+#       # as.numeric(gen.size[input$`roi`,]$size)
+#       count_site[,1:25]/as.numeric(gen.size[input$`roi`,]$size)
+#     }
+#   } else {
+#     count_site[1:5,1:5]
+#   }
+#   
+# }, rownames=F)
+
 
 # select multiple samples to display per protocol
 # scatterplot for protocol X vs Y
 scatterPlotDF <- reactive({
+  
   annotation_df <- getAnt()
   protocol1 <- input$`protocol1`
   protocol1 <- gsub("\\s", "_", protocol1)
@@ -855,10 +907,7 @@ scatterPlotDF <- reactive({
     protocol2 <- "UHN"
   }
   count_site <- getSampleCounts()
-  # if(input$`normalizeCount`){
-  #   count_site <- cpm(count_site)
-  # }
-  # head(count_site)
+
   # protocol1
   snames1 <- unique(colnames(count_site)[grepl(protocol1, colnames(count_site))])
   xcounts <- count_site[,grepl(protocol1, colnames(count_site))]
