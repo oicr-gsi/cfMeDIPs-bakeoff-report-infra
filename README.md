@@ -18,14 +18,16 @@ Requirements
     - stringr
     - edgeR
     - gtools
+- data.zip *
 
 Usage
 -------
       git clone https://github.com/oicr-gsi/cfMeDIPs-bakeoff-report-infra.git
       cd cfMeDIPs-bakeoff-report-infra/
+      unzip data.zip
       Rscript run.R
       
-  The app runs on this URL http://127.0.0.1:5052/
+  The app runs on this URL http://127.0.0.1:<PORT>/
 
   
-### NOTE: Please email Prisni.Rath@oicr.on.ca to request the data for visualization here.
+*NOTE: Please email Prisni.Rath@oicr.on.ca for the link to data.zip for visualization here.
