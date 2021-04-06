@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(shiny)
 library(ggplot2)
 library(gtools)
+library(reshape2)
 ```
 
 ## GOAL
@@ -707,10 +708,8 @@ The ROI sets were created using [BSgenome.Hsapiens.UCSC.hg38.masked](http://bioc
 
 #### 300 bp bin occupancy (Raw counts only)
 
-pending with normalized counts
 
 ```{r, echo = F}
-library(reshape2)
 bin300bp.data <- read.csv("data/binOccupancy/coverageXinfo.txt",
                            sep = "\t", as.is = T)
 # dim(bin300bp.data)
@@ -765,6 +764,9 @@ plt
 ```
 
 
+
+
+
 \
 ```{r, echo = F, warning=F, message=F}
 
@@ -795,15 +797,7 @@ getAnt <- reactive({
 inputPanel(
   # load run names based on project selected
   selectInput("roi", label = "Regions of interest",
-              choices = c("select region of interest"), selected = "roi", width = 2000),
-  selectInput("protocol1", label = "Group By 1",
-              choices = c("select expt protocol"), selected = "protocol1", width = 2000),
-  selectInput("protocol2", label = "Group By 2",
-              choices = c("select expt protocol"), selected = "protocol2", width = 2000),
-  checkboxInput("clusterFlag", label= "Cluster heatmap",
-                  value = FALSE, width = NULL),
- sliderInput("resize", label = "Size of figure",
-              min = 10, max = 20, value = 10, step = 1)
+              choices = c("select region of interest"), selected = "roi", width = 2000)
 )
 # #
 observe({
@@ -823,8 +817,22 @@ observe({
 
 
 ```
+
 \
 ```{r, echo = F}
+# # design panel
+inputPanel(
+  # load run names based on project selected
+  selectInput("protocol1", label = "Group By 1",
+              choices = c("select expt protocol"), selected = "protocol1", width = 2000),
+  selectInput("protocol2", label = "Group By 2",
+              choices = c("select expt protocol"), selected = "protocol2", width = 2000),
+  checkboxInput("clusterFlag", label= "Cluster heatmap",
+                  value = FALSE, width = NULL),
+ sliderInput("resize", label = "Size of figure",
+              min = 10, max = 20, value = 10, step = 1)
+)
+
 reactive({
   observe({
   ant <- getAnt()
@@ -1095,6 +1103,64 @@ scatterPlotDF <- reactive({
 
 ```
 
+
+
+Distribution for coverage from raw counts
+
+
+```{r, echo=F, warning=F}
+
+piechart.data <- read.csv("data/binOccupancy/bins_info_formatted.csv", as.is = T)
+piechart.data <- merge(piechart.data, annotations, by = "sampleName")
+piechart.data <- melt(piechart.data, measure.vars = c("X0x", "X1_5x", "X5_10x", "X10_50x", "X50_100x", "X100x"))
+piechart.data$protocol <- paste(piechart.data$IDENT, piechart.data$notes, sep = "\n")
+# piechart.data$value <- as.numeric(piechart.data$value)/10^6
+piechart.data$variable <- gsub("X", "",piechart.data$variable)
+# order 
+piechart.data$variable <- factor(piechart.data$variable , levels = c("0x", "1_5x", "5_10x", "10_50x", "50_100x", "100x"))
+
+inputPanel(
+  # load run names based on project selected
+  selectInput("poi", label = "Protocol Defintion",
+              choices = c("select a protocol definition"), selected = "poi", width = 2000)
+)
+# #
+observe({
+  updateSelectInput(
+    session,
+    "poi",
+    choices = unique(piechart.data$protocol)
+  )
+})
+
+blank_theme <- theme_minimal()+
+  theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.border = element_blank(),
+  panel.grid=element_blank(),
+  axis.ticks = element_blank(),
+  plot.title=element_text(size=14, face="bold")
+  )
+# subset by protocols
+renderPlot({
+  # show by sample ID
+  # sname=input$`sampleName`
+  # show by ROI
+  if (input$`roi` != "allsites"){
+    # piechart.data$Effective.sample.ID <- gsub("-", "\n", piechart.data$Effective.sample.ID)
+    plt <- ggplot(piechart.data[grepl(input$`sname`, piechart.data$Effective.sample.ID) &
+                                  piechart.data$protocol == input$`poi`,], 
+                  aes(x=variable, y=value, fill =variable)) + 
+      geom_bar(width = 0.7, stat = "identity") + 
+    scale_fill_brewer(palette="Dark2") +
+                  blank_theme +
+      ylab("# 300 bp bins") + xlab("") 
+  plt
+  }
+}, width = 600, height = 400)
+# head(piechart.data)
+```
 To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
 
 
