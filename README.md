@@ -27,7 +27,7 @@ Usage
       unzip data.zip
       Rscript run.R
       
-  The app runs on this URL http://127.0.0.1:<PORT>/
+  The app runs on this URL http://127.0.0.1:PORT/
 
   
 *NOTE: Please email Prisni.Rath@oicr.on.ca for the link to data.zip for visualization here.
