@@ -17,6 +17,7 @@ Requirements
     - flexdashboard
     - stringr
     - edgeR
+    - gtools
 
 Usage
 -------
