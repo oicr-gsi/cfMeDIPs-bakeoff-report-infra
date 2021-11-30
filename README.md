@@ -30,4 +30,4 @@ Usage
   The app runs on this URL http://127.0.0.1:PORT/
 
   
-*NOTE: Please email Prisni.Rath@oicr.on.ca for the link to data.zip for visualization here.
+*NOTE: data.zip is not distributed on this repo but can be obtained by emailing lawrence.heisler@oicr.on.ca.
